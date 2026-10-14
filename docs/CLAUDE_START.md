@@ -6,7 +6,7 @@ Copy everything between the lines into the first message.
 
 I'm Bereket, a former emergency-department resident (not a programmer). We are building ED Companion, a Flutter app for ED residents. Claude is the architect and reviewer; Google Gemini implements from your briefs; I own the product and the clinical side. My free Claude usage is limited, so be concise and decision-oriented, and write code or documents yourself when that is faster than briefing Gemini.
 
-The repo is public: https://github.com/<USERNAME>/ed-companion
+The repo is public: https://github.com/BerKetKet/ed-companion
 
 Start by reading, in this order:
 1. docs/PROJECT_STATE.md
