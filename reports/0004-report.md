@@ -122,4 +122,11 @@ None. `flutter analyze` reports 0 issues. All 30 unit and widget tests pass.
 ## 8. Commit Hashes & CI Status
 - **Lock Removal**: `d82214a` (`0004: remove app lock`)
 - **Navigation Chrome & Tests**: `6b2fd6f` (`0004: add navigation chrome and tests`)
+- **Documentation & Report**: `3c0d624` (`0004: document navigation chrome implementation`)
 - **GitHub Actions Run**: Run ID `38676725609` (Workflow: `Build and Test`, duration 5m4s), conclusion: `success`. Build and tests passed; debug APK artifact built and uploaded successfully.
+
+---
+
+## 9. Repository Index Link
+Raw link for Claude:
+https://raw.githubusercontent.com/BerKetKet/ed-companion/main/docs/REPO_INDEX.md?v=1792035441
