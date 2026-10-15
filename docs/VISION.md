@@ -1,6 +1,6 @@
 # Vision, feature catalog and release plan
 
-Written 2026-10-15 by Claude from Bereket's ideas. This is the idea inbox and the plan. Nothing here is built unless `PROJECT_STATE.md` and `LOG.md` say so. Priorities: P1 build early, P2 next, P3 later.
+Written 2026-10-15 by Claude from Bereket's ideas; reconciled with the other docs the same day. This is the governing plan and the idea inbox. `ARCHITECTURE.md`, `ROADMAP.md` and `PROJECT_STATE.md` follow it. Nothing here is built unless `PROJECT_STATE.md` and `LOG.md` say so. Priorities: P1 build early, P2 next, P3 later.
 
 ## Principles
 - One app, many roles: residents, interns, nurses and seniors use the same app with role-based screens, not separate apps.
@@ -79,7 +79,7 @@ Roles control which screens and actions are shown. They are chosen when a user j
 10. **Round mode and handover need structured data**: notes have kinds, investigations are structured records, events are timestamped.
 
 ## Release plan (proposal, Bereket decides)
-- **R1 Pocket notebook (useful on one phone, first thing to show colleagues):** shell and lock (done), navigation chrome and gestures, ward board, patient page, notes with drafts, quick capture, per-patient timers, camera attachments (local), calculators.
+- **R1 Pocket notebook (useful on one phone, first thing to show colleagues):** shell (done; the app lock was removed by decision, see `DECISIONS.md`), navigation chrome and gestures, ward board, patient page, notes with drafts, quick capture, per-patient timers, camera attachments (local), calculators.
 - **R2 Ward sync:** identity and roles, LAN sync, media sync with compression, shared tasks and delegation with local pings, duty mode and handover, consult button, round mode.
 - **R3 Server and chat:** the headless peer on a spare PC, patient and general chat, reliable pings, central media store.
 - **R4 Study and learning:** PDF reader and library, snippets, teaching pages, AI features, hospital data fetch.
@@ -88,10 +88,11 @@ Roles control which screens and actions are shown. They are chosen when a user j
 - Scope: this is a large product. We protect motivation by shipping R1 early and testing it with real residents.
 - Background notifications on old phones (see above).
 - Storage and bandwidth for media.
-- Patient images and chat raise the stakes of the deferred privacy decision. Before a real pilot with patient data, get the hospital's agreement and consider encrypting identifiers and media.
+- Patient images and chat raise the stakes of the deferred privacy decision. Before a real pilot with patient data, get the hospital's agreement, consider encrypting identifiers and media, and revisit the lock decision (the app has no lock today).
 - Scraping the hospital system is fragile and may need IT approval.
 
 ## Open questions for Bereket
 - Confirm or change the release order.
 - Handover note contents for duty mode.
 - Which roles need what on day one.
+- Is the Hospital view (WebView, module C) part of R1? It is the paste target of the whole workflow but depends on spike S2.

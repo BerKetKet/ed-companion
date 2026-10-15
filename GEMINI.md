@@ -21,3 +21,9 @@ You are the implementer on ED Companion, a Flutter app for emergency-department 
 - Plain, mainstream Dart and Flutter. Short files, clear names, a one-line comment on anything non-obvious.
 - Large tap targets, readable fonts, dark mode support. Bereket tests on a Pixel 2 XL; the target audience has older phones, so keep it light.
 - Medical calculators: every formula needs its source cited in code and shown in the UI, plus unit tests with worked examples. Do not invent or "improve" formulas; if the brief's formula or source is unclear, ask.
+
+## UI conventions
+- Handedness: read it from the handedness setting in `app/lib/core/`; never hard-code left or right for thumb-reach controls.
+- No gesture may start in the outer 24 dp of the left and right screen edges (Android back gesture).
+- Every gesture has a visible fallback and an entry in the Gestures help registry.
+- The app has no lock by decision. Do not add one.

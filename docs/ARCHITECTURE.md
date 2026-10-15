@@ -1,73 +1,92 @@
 # Architecture
 
-Status: proposed by Claude, 2026-10-15. Change only through `DECISIONS.md`.
+Status: reconciled with `VISION.md` on 2026-10-15. Where this file and VISION.md disagree, VISION.md wins. Change this file only through `DECISIONS.md`.
 
 ## Stack
-- Flutter (Dart), Android first. Minimum Android version: the lowest the current Flutter stable supports.
-- State management: Riverpod. Navigation: go_router.
-- Local database: Drift (SQLite). Mainstream, typed, migrations supported.
-- Secure storage for the Gemini key and lock PIN: flutter_secure_storage.
-- Voice (v1): speech_to_text (Android's built-in recognizer, English).
-- WebView: webview_flutter.
+- Flutter (Dart), Android first, iOS later. Minimum Android version: the lowest the current Flutter stable supports (minSdk 24 today). CI pins Flutter 3.47.7.
+- State: Riverpod. Navigation: go_router. Local database: Drift via drift_flutter (SQLite).
+- Settings: shared_preferences. flutter_secure_storage is kept for the Gemini key (module F). There is no app lock.
+- Later, chosen when briefed: speech_to_text (English), webview_flutter, pdfrx (PDF reader), camera and video packages, local notifications.
 - Prefer small, popular, maintained packages. Gemini must not add a package without saying so in the report.
 
+## Principles (from VISION.md)
+- One app, many roles (resident, intern, nurse, senior). Roles decide which screens and actions are shown.
+- Offline-first. Every phone works alone; sync adds teamwork.
+- Few actions: bars hide, one draggable quick button and gestures reach everything, and every gesture has a visible fallback.
+- AI is always an optional enhancement.
+- Each release is useful on its own and demo-able to colleagues.
+
+## UI conventions (navigation chrome)
+- Chrome means the top bar, the bottom navigation bar and the in-screen switch rows. A setting chooses Always show, Auto-hide (hide on scroll down, show on scroll up) or Gestures only. A thin handle near the bottom brings hidden bars back.
+- One quick button, available on every screen, draggable to either side, position remembered per side. Tap opens a fan-out menu.
+- Handedness (right by default, left as mirror) lives in `app/lib/core/`. Every thumb-reach control, in every module, reads it. Nothing hard-codes left or right.
+- No gesture starts in the outer 24 dp of the left and right screen edges (Android back gesture).
+- Inside a WebView, horizontal swipes belong to the page; the handle is used to switch away.
+- Gestures are listed in one registry that feeds the Gestures help screen; modules add their gestures there.
+
 ## Modules
-Small and isolated, each in its own folder under `app/lib/features/`.
+Small and isolated, each under `app/lib/features/<module>/`. Letters B, C, D, E are fixed because placeholders in the code use them.
 
-| Id | Module | Notes |
-|---|---|---|
-| A | Shell and lock | Login by PIN or fingerprint, bottom navigation, settings, About |
-| B | Patients | Ward board, patient page, notes, drafts, tasks |
-| D | Tools | Calculators, each with formula, source and tests |
-| C | Hospital view | WebView plus the swipe/tab bridge |
-| E | Study | Library, snippets, notes, flashcards |
-| F | AI assist | Gemini key, voice to structured note, summaries |
-| G | Sync | LAN and cloud transports over one protocol |
-| H | Handover | Event timeline and handover note |
+| Id | Module | Release | Notes |
+|---|---|---|---|
+| A | Shell and navigation chrome | R1 | Navigation, settings, About, quick button, handedness. No app lock. |
+| B | Patients | R1 | Ward board, patient page, notes with drafts, quick capture |
+| C | Hospital view | R1 if spike S2 passes | WebView of the hospital system, copy-for-hospital button, swipe and handle bridge |
+| D | Tools | R1 and R2 | Calculators, each with formula, source and tests, prefilled from the patient |
+| I | Capture and media | R1 local, R2 sync | Camera photo and video for ECG and ultrasound, compression, thumbnails |
+| J | Tasks and timers | R1 local, R2 shared | Per-patient timers, tasks, delegation, local notifications |
+| G | Sync | R2 | Identity, roles, LAN transport, media lane |
+| H | Handover and duty mode | R2 | Event timeline, timed handover note, persistent reminder |
+| K | Consult and round mode | R2 | Consult button, read-only round view |
+| L | Server and chat | R3 | Headless peer on a spare PC, patient and general chat, reliable pings |
+| E | Study | R4 | PDF library and reader, snippets, notes, flashcards, teaching pages |
+| F | AI assist | R4 | Gemini key, voice to structured note, summaries, handover draft |
+| M | Hospital data fetch | R4 | Read-only, inside the WebView with the user's own login, agreed with hospital IT |
 
-Build order: A, B, D, C, G (local sync engine first), H, E, F, then cloud transport. Sync is early because every record type must be designed for it from the start.
+Build order inside R1: A (chrome), B, J, D, I, then C when S2 allows. Sync (G) is designed into every record type from the start, even though it ships in R2.
 
 ## Data model (offline-first, sync-ready)
+Every synced record has: `id` (UUID v4), `createdAt` and `updatedAt` (hybrid logical clock values), `deviceId`, `authorId`, `deleted` (tombstone; nothing synced is hard-deleted), and an optional `audience` (user ids or roles) so the record can be addressed.
 
-Every synced record has:
-- `id`: UUID v4
-- `createdAt`, `updatedAt`: hybrid logical clock values (sortable, safe against bad phone clocks)
-- `deviceId`: which phone wrote this version
-- `authorId`: which doctor
-- `deleted`: boolean tombstone (nothing is ever hard-deleted from synced tables)
+Conflict rule: last writer wins per record by (`updatedAt`, `deviceId`). Notes are versioned: editing creates a new version and old versions stay in history, so no text is lost.
 
-Conflict rule: last writer wins per record by (`updatedAt`, `deviceId`). To avoid losing text, notes are append-style: editing a note creates a new version rather than overwriting the old one, and old versions stay in history.
-
-Tables (synced):
-- `Doctor` (id, name, role)
+Synced tables:
+- `User` (id, name, role: resident | intern | nurse | senior). Replaces the earlier `Doctor` table. Tasks, consults and messages reference users.
 - `Bed` (id, label, ward)
-- `Patient` (id, bedId, **identifiers isolated in `PatientIdentity`**, age, sex, weightKg, allergies, status, admittedAt)
-- `PatientIdentity` (patientId, name, record number): kept separate so it can be encrypted or dropped from sync later
+- `Patient` (id, bedId, age, sex, weightKg, allergies, status, admittedAt); identifiers are isolated in `PatientIdentity` (patientId, name, record number) so they can be encrypted or dropped from sync later
+- `Assignment` (id, userId, patientId): a user's personal list
 - `Note` (id, patientId, kind: history | orders | plan | free | exam | result, body, structuredJson, authorId)
-- `Event` (id, patientId, kind: medication | transfusion | bleeding | vomiting | deterioration | procedure | result | other, occurredAt, text, authorId): feeds handover
-- `Task` (id, patientId, text, dueAt, doneAt): pending results, rechecks
-- `Handover` (id, fromDoctorId, toDoctorId, shiftEndAt, body, patientIds)
-- `Assignment` (id, doctorId, patientId): a doctor's personal list ("mine")
+- `Event` (id, patientId, kind: medication | transfusion | bleeding | vomiting | deterioration | procedure | result | other, occurredAt, text, authorId): feeds handover and round mode
+- `Task` (id, patientId, text, ownerId, creatorId, dueAt, reminderAt, doneAt, doneById)
+- `Timer` (id, patientId, label, dueAt, attachedTo)
+- `Consult` (id, patientId, text, addressedTo)
+- `Message` (id, scope: patient | general, patientId, text, addressedTo): chat; same sync engine
+- `Handover` (id, fromUserId, toUserId, shiftEndAt, body, patientIds)
+- `Media` (id, patientId, noteId, kind, contentHash, thumbnail): the file itself travels in the media lane
+- `TeachingPage` (id, patientId, body): separate from the care page
 
-Tables (local only, never synced):
-- `Draft` (id, scope, targetId, body, updatedAt): half-written text, autosaved every few seconds
-- `Setting`, `SyncCursor`, `Snippet` (personal text shortcuts)
+Local only, never synced: `Draft` (id, scope, targetId, body, updatedAt; autosaved), `Setting`, `SyncCursor`, `Snippet`.
 
-## Sync design (one protocol, two transports)
-
-Each device keeps, per origin device, the highest sequence number it has received. A sync exchange is: "here are my cursors; send me everything after them", answered in both directions. Records are idempotent, so repeated or out-of-order delivery is harmless.
+## Sync design (one protocol, several transports)
+Each device keeps, per origin device, the highest sequence number it has received. An exchange is: "here are my cursors; send me everything after them", answered in both directions. Records are idempotent, so repeated or out-of-order delivery is harmless.
 
 Transports implement one interface, `SyncTransport`:
-1. **LAN**: each phone runs a tiny HTTP server while the app is open and discovers peers with mDNS. Falls back to Google Nearby Connections if the wifi blocks device-to-device traffic. Decision depends on spike S1.
-2. **Cloud**: the server only stores and forwards records. Backend chosen later (Firebase Firestore or Supabase free tier).
+1. LAN: each phone runs a small HTTP server while the app is open and finds peers with mDNS. Fallback: Google Nearby Connections if the wifi blocks device-to-device traffic (spike S1).
+2. Server peer (R3): a spare hospital PC runs the same protocol, written in Dart so it shares code with the app. Always on, stores everything.
+3. Cloud relay: optional and late, only if no hospital server exists. Backend (Firebase or Supabase free tier) is decided before R3, if at all.
 
-Ward-wide shared secret (a ward code entered once) prevents strangers on the wifi from reading or writing. Real accounts can come later.
+A ward code (entered once, with name and role) keeps strangers on the wifi out. Real accounts can come later.
+
+Addressed records: pings, tasks, consults and chat messages are ordinary synced records with an `audience`. Each phone raises a local notification for records meant for its user, so the same logic works over every transport.
+
+## Media lane
+Photos and videos are files with a content hash, synced separately from records: compressed on capture, thumbnails first, full files on demand, with a retention policy for phones with little storage.
+
+## Reminders and background
+Timers, tasks and duty reminders are scheduled on each phone as local notifications derived from records, so they fire with no network (exact-alarm permission on newer Android). Receiving pings from other phones needs the app alive in the background (an Android foreground service); some old phones kill background apps, so this must be tested on colleagues' real phones.
 
 ## Hospital view bridge (module C)
-Left: the app. Right: WebView of the hospital system. Both a swipe gesture and a bottom switch work, because horizontal swipes conflict with scrolling inside the web page. One-tap "copy note formatted for the hospital system". Paste still done by the user with the normal long-press.
+The Work screen holds Patients and Hospital pages in a `PageView`. Horizontal swipes conflict with scrolling inside the web page, so on the Hospital page the swipe is off and the handle and the switch row are used. One-tap "copy note formatted for the hospital system"; the user pastes with the normal long-press.
 
 ## AI layer (module F)
-Gemini key from Settings, stored securely. Functions: structure a dictated note, summarize a document, build flashcards, write the handover note from events. All AI features are optional enhancements and show the raw text alongside.
-
-## Convenience features (see ROADMAP for ordering)
-Quick-capture button reachable from any screen, autosaved drafts everywhere, personal text snippets, reassessment timers with notifications, one-handed bottom navigation, dark mode for night shifts, large tap targets, patient search, calculators prefilled from the patient's age and weight.
+Gemini key from Settings, stored in secure storage. One service with context builders: structure a dictated note, summarize a note or document, write the handover draft, find learning material, make flashcards. Every feature shows the raw text alongside and is optional.

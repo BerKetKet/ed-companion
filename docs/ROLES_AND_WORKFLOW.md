@@ -27,17 +27,13 @@
 2. Claude asks at most one or two questions if needed, then produces one brief.
 3. Bereket gives the brief to Gemini. Gemini first saves it verbatim as `briefs/NNNN-slug.md`.
 4. Gemini does the work, runs the checks, commits, and writes `reports/NNNN-report.md`, including the commit hash.
-5. Bereket tells Claude "report 0003 done" (and pastes the report if Claude cannot fetch the repo).
+5. Bereket tells Claude "report 0003 done" and sends a fresh zip of the repo.
 6. Claude reviews the report and the commit diff, then either approves or issues a correction brief.
 7. On approval Claude updates the state docs and Gemini tags the commit `ok-NNNN`. A tag is a safe point to roll back to.
 
 ## How Claude reads the repo
 
-The repo is public. Useful fetch targets:
-- `https://github.com/<user>/ed-companion/blob/main/<path>` or the raw file at `https://raw.githubusercontent.com/<user>/ed-companion/main/<path>`
-- A single commit's diff: `https://github.com/<user>/ed-companion/commit/<hash>.diff`
-
-If a Claude session cannot fetch these, Bereket pastes the named files. The report always lists the files changed so Claude knows what to ask for.
+Claude's session usually cannot browse GitHub (automated access is blocked). Bereket sends a zip of the repo made with the command in `docs/CLAUDE_START.md`. Claude unzips it and reads every file before reviewing, then states what it could not verify (it cannot run Flutter, see git history or CI). If browsing does work, raw files at `https://raw.githubusercontent.com/BerKetKet/ed-companion/main/<path>` are a fallback, and a single commit's diff is at `https://github.com/BerKetKet/ed-companion/commit/<hash>.diff`.
 
 ## Rules for briefs (Claude writing)
 
