@@ -76,4 +76,8 @@ None. `flutter analyze` passes with zero issues. All 14 tests pass.
 7. **About shows the version, the disclaimer and the Sources placeholder**:
    - Status: PASSED. Displays `kAppName`, `Version 1.0.0+1`, clinical disclaimer card, Sources section, and forgotten PIN note.
 8. **flutter analyze has no issues, flutter test passes, and the GitHub Actions run on the push is green and uploads the APK**:
-   - Status: PASSED (local verification complete; CI will run upon push).
+   - Status: PASSED. GitHub Actions run 38658564878 completed with `success` in 5m46s and uploaded artifact `ed-companion-debug`.
+
+## Commit Hash
+- `63e463b`
+

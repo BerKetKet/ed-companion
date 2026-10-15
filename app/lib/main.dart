@@ -6,7 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/constants.dart';
 import 'features/shell/about_screen.dart';
 import 'features/shell/lock/change_pin_screen.dart';
+import 'features/shell/lock/choose_lock_screen.dart';
 import 'features/shell/lock/lock_controller.dart';
+import 'features/shell/lock/lock_mode.dart';
 import 'features/shell/lock/lock_screen.dart';
 import 'features/shell/lock/lock_timer.dart';
 import 'features/shell/lock/setup_pin_screen.dart';
@@ -37,25 +39,12 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: refreshListenable,
     redirect: (context, state) {
       final lockState = ref.read(lockControllerProvider);
-      final isGoingToSetupPin = state.matchedLocation == '/setup-pin';
-      final isGoingToLock = state.matchedLocation == '/lock';
-
-      // Rule 1: First launch / no PIN set -> redirect to /setup-pin
-      if (!lockState.hasPin) {
-        return isGoingToSetupPin ? null : '/setup-pin';
-      }
-
-      // Rule 2: App locked -> redirect to /lock
-      if (lockState.isLocked) {
-        return isGoingToLock ? null : '/lock';
-      }
-
-      // Rule 3: Unlocked with PIN set -> prevent staying on lock or setup
-      if (isGoingToLock || isGoingToSetupPin) {
-        return '/work';
-      }
-
-      return null;
+      return resolveLockRoute(
+        mode: lockState.lockMode,
+        hasPin: lockState.hasPin,
+        isLocked: lockState.isLocked,
+        location: state.matchedLocation,
+      );
     },
     routes: [
       StatefulShellRoute.indexedStack(
@@ -87,6 +76,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: '/choose-lock',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ChooseLockScreen(),
       ),
       GoRoute(
         path: '/setup-pin',
@@ -164,7 +158,14 @@ class _EdCompanionAppState extends ConsumerState<EdCompanionApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final lockState = ref.read(lockControllerProvider);
-    if (!lockState.hasPin) return;
+    if (lockState.authenticating) return;
+    if (lockState.lockMode != LockMode.appPin &&
+        lockState.lockMode != LockMode.phoneLock) {
+      return;
+    }
+    if (lockState.lockMode == LockMode.appPin && !lockState.hasPin) {
+      return;
+    }
 
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
@@ -183,6 +184,12 @@ class _EdCompanionAppState extends ConsumerState<EdCompanionApp>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AppLockState>(lockControllerProvider, (previous, next) {
+      if (previous?.authenticating == true && !next.authenticating) {
+        _backgroundedAt = null;
+      }
+    });
+
     final settings = ref.watch(settingsProvider);
     final router = ref.watch(routerProvider);
 

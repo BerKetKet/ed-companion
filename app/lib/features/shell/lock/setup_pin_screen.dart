@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'lock_controller.dart';
 import 'pin_keypad.dart';
 
@@ -61,7 +62,13 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
   Future<void> _finishConfirmation() async {
     if (_currentPin == _firstPin) {
       await ref.read(lockControllerProvider.notifier).setPin(_firstPin);
-      // Navigation is handled automatically by GoRouter redirect to /work.
+      if (mounted) {
+        if (Navigator.canPop(context)) {
+          context.pop();
+        } else {
+          context.go('/work');
+        }
+      }
     } else {
       setState(() {
         _errorMessage = 'PINs did not match. Please try again.';
@@ -81,65 +88,82 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
         : 'Re-enter your PIN to verify';
 
     return Scaffold(
+      appBar: Navigator.canPop(context)
+          ? AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+            )
+          : null,
       body: SafeArea(
-        child: Column(
-          children: [
-            const Spacer(),
-            Icon(
-              Icons.lock_outline,
-              size: 48,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 24),
-            PinDotsIndicator(
-              pinLength: _currentPin.length,
-              maxDots: _step == 1 && _firstPin.isNotEmpty ? _firstPin.length : 6,
-              hasError: _errorMessage != null,
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 24,
-              child: _errorMessage != null
-                  ? Text(
-                      _errorMessage!,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.error,
-                        fontWeight: FontWeight.w500,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    children: [
+                      const Spacer(),
+                      Icon(
+                        Icons.lock_outline,
+                        size: 48,
+                        color: theme.colorScheme.primary,
                       ),
-                    )
-                  : null,
-            ),
-            const Spacer(),
-            if (_step == 0 && _currentPin.length >= 4)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: FilledButton.tonal(
-                  onPressed: _onContinue,
-                  child: const Text('Continue'),
+                      const SizedBox(height: 16),
+                      Text(
+                        title,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        subtitle,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      PinDotsIndicator(
+                        pinLength: _currentPin.length,
+                        maxDots: _step == 1 && _firstPin.isNotEmpty ? _firstPin.length : 6,
+                        hasError: _errorMessage != null,
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 24,
+                        child: _errorMessage != null
+                            ? Text(
+                                _errorMessage!,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.error,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              )
+                            : null,
+                      ),
+                      const Spacer(),
+                      if (_step == 0 && _currentPin.length >= 4)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: FilledButton.tonal(
+                            onPressed: _onContinue,
+                            child: const Text('Continue'),
+                          ),
+                        ),
+                      PinKeypad(
+                        onDigitPressed: _onDigit,
+                        onDeletePressed: _onDelete,
+                        onEnterPressed: _onContinue,
+                        showEnter: _currentPin.length >= 4,
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
                 ),
               ),
-            PinKeypad(
-              onDigitPressed: _onDigit,
-              onDeletePressed: _onDelete,
-              onEnterPressed: _onContinue,
-              showEnter: _currentPin.length >= 4,
-            ),
-            const SizedBox(height: 24),
-          ],
+            );
+          },
         ),
       ),
     );

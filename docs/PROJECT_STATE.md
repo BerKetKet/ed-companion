@@ -6,10 +6,10 @@ Last updated: 2026-10-15 by Gemini (Brief 0002 complete)
 ED Companion: a Flutter app for emergency-department residents. They document patients quickly on their phones (typed or by voice), then paste into the hospital's existing web system, which they cannot modify and which is reachable only on the hospital wifi (10.x.x.x). Built by Bereket, a former resident, who is not a programmer. Free services only.
 
 ## Where we are
-Milestone M0 is complete and brief 0002 (shell and lock) is done pending review.
+Brief 0003 (lock types and lock fixes) is complete pending review. Users can choose App PIN, Phone screen lock, or No lock. Lockout persists across app restarts, biometrics re-lock bug is resolved, and wrong attempt limits are enforced consistently across screens.
 
 ## Next up
-1. Review 0002, then module B (patients and notes) design.
+1. Review 0003, then plan module B with Bereket's ideas.
 
 ## Open decisions (Claude owns these)
 - Cloud backend choice for sync (leaning Firebase Firestore free tier or Supabase). Decide before module G.

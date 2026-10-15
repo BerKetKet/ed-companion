@@ -19,7 +19,8 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
   String? _errorMessage;
 
   void _onDigit(String digit) {
-    if (_input.length >= 6) return;
+    final lockState = ref.read(lockControllerProvider);
+    if (lockState.isLockedOut || _input.length >= 6) return;
 
     setState(() {
       _errorMessage = null;
@@ -32,7 +33,9 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
   }
 
   void _onDelete() {
-    if (_input.isEmpty) return;
+    final lockState = ref.read(lockControllerProvider);
+    if (lockState.isLockedOut || _input.isEmpty) return;
+
     setState(() {
       _errorMessage = null;
       _input = _input.substring(0, _input.length - 1);
@@ -40,6 +43,9 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
   }
 
   Future<void> _handleStepAction() async {
+    final lockState = ref.read(lockControllerProvider);
+    if (lockState.isLockedOut) return;
+
     if (_input.length < 4) {
       setState(() {
         _errorMessage = 'PIN must be at least 4 digits';
@@ -95,6 +101,12 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final lockState = ref.watch(lockControllerProvider);
+
+    String? displayError = _errorMessage;
+    if (lockState.isLockedOut) {
+      displayError = 'Too many attempts. Try again in ${lockState.lockoutRemainingSeconds}s';
+    }
 
     String title;
     String subtitle;
@@ -119,58 +131,71 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
         title: const Text('Change PIN'),
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            const Spacer(),
-            Text(
-              title,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 24),
-            PinDotsIndicator(
-              pinLength: _input.length,
-              maxDots: _step == 2 && _newPin.isNotEmpty ? _newPin.length : 6,
-              hasError: _errorMessage != null,
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 28,
-              child: _errorMessage != null
-                  ? Text(
-                      _errorMessage!,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.error,
-                        fontWeight: FontWeight.w500,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    children: [
+                      const Spacer(),
+                      Text(
+                        title,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    )
-                  : null,
-            ),
-            const Spacer(),
-            if ((_step == 0 || _step == 1) && _input.length >= 4)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: FilledButton.tonal(
-                  onPressed: _handleStepAction,
-                  child: const Text('Continue'),
+                      const SizedBox(height: 8),
+                      Text(
+                        subtitle,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      PinDotsIndicator(
+                        pinLength: _input.length,
+                        maxDots: _step == 2 && _newPin.isNotEmpty ? _newPin.length : 6,
+                        hasError: displayError != null,
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 28,
+                        child: displayError != null
+                            ? Text(
+                                displayError,
+                                textAlign: TextAlign.center,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.error,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              )
+                            : null,
+                      ),
+                      const Spacer(),
+                      if ((_step == 0 || _step == 1) && _input.length >= 4 && !lockState.isLockedOut)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: FilledButton.tonal(
+                            onPressed: _handleStepAction,
+                            child: const Text('Continue'),
+                          ),
+                        ),
+                      PinKeypad(
+                        onDigitPressed: _onDigit,
+                        onDeletePressed: _onDelete,
+                        onEnterPressed: _handleStepAction,
+                        enabled: !lockState.isLockedOut,
+                        showEnter: _input.length >= 4,
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
                 ),
               ),
-            PinKeypad(
-              onDigitPressed: _onDigit,
-              onDeletePressed: _onDelete,
-              onEnterPressed: _handleStepAction,
-              showEnter: _input.length >= 4,
-            ),
-            const SizedBox(height: 24),
-          ],
+            );
+          },
         ),
       ),
     );

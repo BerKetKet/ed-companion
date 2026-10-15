@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
+import '../settings_provider.dart';
+import 'lock_mode.dart';
 import 'pin_hasher.dart';
 
 final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
@@ -12,48 +15,65 @@ final localAuthProvider = Provider<LocalAuthentication>((ref) {
   return LocalAuthentication();
 });
 
-/// State of PIN security, locks, and attempt counters.
+/// State of security lock mode, PIN, attempts, and biometric flags.
 class AppLockState {
   final bool isInitialized;
+  final LockMode? lockMode;
   final bool hasPin;
   final bool isLocked;
   final int failedAttempts;
   final int lockoutRemainingSeconds;
   final bool biometricsSupported;
+  final bool phoneLockSupported;
+  final bool authenticating;
 
   const AppLockState({
     required this.isInitialized,
+    required this.lockMode,
     required this.hasPin,
     required this.isLocked,
     required this.failedAttempts,
     required this.lockoutRemainingSeconds,
     required this.biometricsSupported,
+    required this.phoneLockSupported,
+    required this.authenticating,
   });
 
   bool get isLockedOut => lockoutRemainingSeconds > 0;
 
   AppLockState copyWith({
     bool? isInitialized,
+    LockMode? lockMode,
+    bool clearLockMode = false,
     bool? hasPin,
     bool? isLocked,
     int? failedAttempts,
     int? lockoutRemainingSeconds,
     bool? biometricsSupported,
+    bool? phoneLockSupported,
+    bool? authenticating,
   }) {
     return AppLockState(
       isInitialized: isInitialized ?? this.isInitialized,
+      lockMode: clearLockMode ? null : (lockMode ?? this.lockMode),
       hasPin: hasPin ?? this.hasPin,
       isLocked: isLocked ?? this.isLocked,
       failedAttempts: failedAttempts ?? this.failedAttempts,
       lockoutRemainingSeconds: lockoutRemainingSeconds ?? this.lockoutRemainingSeconds,
       biometricsSupported: biometricsSupported ?? this.biometricsSupported,
+      phoneLockSupported: phoneLockSupported ?? this.phoneLockSupported,
+      authenticating: authenticating ?? this.authenticating,
     );
   }
 }
 
 class LockController extends Notifier<AppLockState> {
-  static const _keyPinHash = 'pin_hash';
-  static const _keyPinSalt = 'pin_salt';
+  static const keyLockMode = 'lock_mode';
+  static const keyPinCredential = 'pin_credential';
+  static const keyLegacyPinHash = 'pin_hash';
+  static const keyLegacyPinSalt = 'pin_salt';
+  static const keyFailedAttempts = 'lock_failed_attempts';
+  static const keyLockoutUntil = 'lock_lockout_until';
 
   static const _hasher = PinHasher();
   Timer? _lockoutTimer;
@@ -66,52 +86,157 @@ class LockController extends Notifier<AppLockState> {
 
     return const AppLockState(
       isInitialized: false,
+      lockMode: null,
       hasPin: false,
       isLocked: true,
       failedAttempts: 0,
       lockoutRemainingSeconds: 0,
       biometricsSupported: false,
+      phoneLockSupported: false,
+      authenticating: false,
     );
+  }
+
+  /// Reads stored credential pairs supporting both new single-key JSON and legacy 2-key storage.
+  Future<Map<String, String>?> _readCredential(FlutterSecureStorage storage) async {
+    final rawJson = await storage.read(key: keyPinCredential);
+    if (rawJson != null) {
+      try {
+        final decoded = jsonDecode(rawJson) as Map<String, dynamic>;
+        final hash = decoded['hash'] as String?;
+        final salt = decoded['salt'] as String?;
+        if (hash != null && salt != null) {
+          return {'hash': hash, 'salt': salt};
+        }
+      } catch (_) {}
+    }
+
+    // Check legacy keys for migration
+    final legacyHash = await storage.read(key: keyLegacyPinHash);
+    final legacySalt = await storage.read(key: keyLegacyPinSalt);
+    if (legacyHash != null && legacySalt != null) {
+      // Migrate to single-key format
+      final pair = {'hash': legacyHash, 'salt': legacySalt};
+      await storage.write(key: keyPinCredential, value: jsonEncode(pair));
+      await storage.delete(key: keyLegacyPinHash);
+      await storage.delete(key: keyLegacyPinSalt);
+      return pair;
+    }
+
+    return null;
   }
 
   Future<void> initialize() async {
     final storage = ref.read(secureStorageProvider);
+    final prefs = ref.read(sharedPreferencesProvider);
     final localAuth = ref.read(localAuthProvider);
 
-    final hash = await storage.read(key: _keyPinHash);
-    final salt = await storage.read(key: _keyPinSalt);
+    final cred = await _readCredential(storage);
+    final hasPin = cred != null;
 
-    final hasPin = hash != null && salt != null;
+    // Check LockMode and migration
+    final storedModeStr = prefs.getString(keyLockMode);
+    LockMode? resolvedMode = LockMode.fromString(storedModeStr);
 
+    if (storedModeStr == null) {
+      if (hasPin) {
+        // Migration: PIN exists but lock_mode unset -> treat as appPin and save
+        resolvedMode = LockMode.appPin;
+        await prefs.setString(keyLockMode, LockMode.appPin.name);
+      } else {
+        // First launch: mode unset
+        resolvedMode = null;
+      }
+    }
+
+    // Check device support for biometrics and phone lock
     bool biometrics = false;
+    bool phoneLock = false;
     try {
       final canCheck = await localAuth.canCheckBiometrics;
-      final isSupported = await localAuth.isDeviceSupported();
-      biometrics = canCheck || isSupported;
+      final available = await localAuth.getAvailableBiometrics();
+      biometrics = canCheck && available.isNotEmpty;
+
+      final isDeviceSupported = await localAuth.isDeviceSupported();
+      phoneLock = isDeviceSupported && (canCheck || available.isNotEmpty);
     } catch (_) {
       biometrics = false;
+      phoneLock = false;
+    }
+
+    // Cold start rule:
+    // appPin or phoneLock are always locked on cold start.
+    // none is never locked.
+    final bool startLocked = resolvedMode != LockMode.none;
+
+    // Check persisted lockout state
+    int failedAttempts = 0;
+    int remainingSeconds = 0;
+    final storedAttemptsStr = await storage.read(key: keyFailedAttempts);
+    if (storedAttemptsStr != null) {
+      failedAttempts = int.tryParse(storedAttemptsStr) ?? 0;
+    }
+
+    final lockoutUntilStr = await storage.read(key: keyLockoutUntil);
+    if (lockoutUntilStr != null) {
+      final lockoutUntil = DateTime.tryParse(lockoutUntilStr);
+      if (lockoutUntil != null) {
+        final diff = lockoutUntil.difference(DateTime.now()).inSeconds;
+        if (diff > 0) {
+          remainingSeconds = diff;
+          _startCountdown(diff);
+        } else {
+          // Lockout expired while app was closed
+          await _clearLockoutState(storage);
+          failedAttempts = 0;
+        }
+      }
     }
 
     state = AppLockState(
       isInitialized: true,
+      lockMode: resolvedMode,
       hasPin: hasPin,
-      // Cold start: always locked if PIN is configured.
-      isLocked: hasPin,
-      failedAttempts: 0,
-      lockoutRemainingSeconds: 0,
+      isLocked: startLocked,
+      failedAttempts: failedAttempts,
+      lockoutRemainingSeconds: remainingSeconds,
       biometricsSupported: biometrics,
+      phoneLockSupported: phoneLock,
+      authenticating: false,
+    );
+  }
+
+  Future<void> setLockMode(LockMode mode) async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.setString(keyLockMode, mode.name);
+
+    state = state.copyWith(
+      lockMode: mode,
+      isLocked: mode == LockMode.none ? false : state.isLocked,
     );
   }
 
   Future<void> setPin(String newPin) async {
+    _lockoutTimer?.cancel();
     final storage = ref.read(secureStorageProvider);
+    final prefs = ref.read(sharedPreferencesProvider);
+
     final salt = _hasher.generateSalt();
     final hash = _hasher.hashPin(newPin, salt);
+    final payload = jsonEncode({'hash': hash, 'salt': salt});
 
-    await storage.write(key: _keyPinSalt, value: salt);
-    await storage.write(key: _keyPinHash, value: hash);
+    // Write hash and salt as one atomic JSON value
+    await storage.write(key: keyPinCredential, value: payload);
+    await storage.delete(key: keyLegacyPinHash);
+    await storage.delete(key: keyLegacyPinSalt);
+
+    await _clearLockoutState(storage);
+
+    // Saving PIN also ensures lock_mode is appPin
+    await prefs.setString(keyLockMode, LockMode.appPin.name);
 
     state = state.copyWith(
+      lockMode: LockMode.appPin,
       hasPin: true,
       isLocked: false,
       failedAttempts: 0,
@@ -119,58 +244,76 @@ class LockController extends Notifier<AppLockState> {
     );
   }
 
-  Future<bool> verifyAndUnlock(String enteredPin) async {
+  Future<void> deletePin() async {
+    final storage = ref.read(secureStorageProvider);
+    await storage.delete(key: keyPinCredential);
+    await storage.delete(key: keyLegacyPinHash);
+    await storage.delete(key: keyLegacyPinSalt);
+    await _clearLockoutState(storage);
+
+    state = state.copyWith(
+      hasPin: false,
+      failedAttempts: 0,
+      lockoutRemainingSeconds: 0,
+    );
+  }
+
+  Future<bool> verifyAndUnlock(String enteredPin, {bool recordFailure = true}) async {
     if (state.isLockedOut) {
       return false;
     }
 
     final storage = ref.read(secureStorageProvider);
-    final hash = await storage.read(key: _keyPinHash);
-    final salt = await storage.read(key: _keyPinSalt);
-
-    if (hash == null || salt == null) {
+    final cred = await _readCredential(storage);
+    if (cred == null) {
       return false;
     }
 
-    final isValid = _hasher.verifyPin(enteredPin, salt, hash);
-
+    final isValid = _hasher.verifyPin(enteredPin, cred['salt']!, cred['hash']!);
     if (isValid) {
-      _lockoutTimer?.cancel();
-      state = state.copyWith(
-        isLocked: false,
-        failedAttempts: 0,
-        lockoutRemainingSeconds: 0,
-      );
+      await _handleSuccessUnlock(storage);
       return true;
     } else {
-      final newFailedAttempts = state.failedAttempts + 1;
-      if (newFailedAttempts >= 5) {
-        _startLockout(30);
-      } else {
-        state = state.copyWith(failedAttempts: newFailedAttempts);
+      if (recordFailure) {
+        await _handleFailedAttempt(storage);
       }
       return false;
     }
   }
 
-  Future<bool> verifyCurrentPin(String currentPin) async {
-    final storage = ref.read(secureStorageProvider);
-    final hash = await storage.read(key: _keyPinHash);
-    final salt = await storage.read(key: _keyPinSalt);
-
-    if (hash == null || salt == null) {
+  /// Verifies current PIN, counting wrong attempts and respecting lockout.
+  Future<bool> verifyCurrentPin(String currentPin, {bool recordFailure = true}) async {
+    if (state.isLockedOut) {
       return false;
     }
 
-    return _hasher.verifyPin(currentPin, salt, hash);
+    final storage = ref.read(secureStorageProvider);
+    final cred = await _readCredential(storage);
+    if (cred == null) {
+      return false;
+    }
+
+    final isValid = _hasher.verifyPin(currentPin, cred['salt']!, cred['hash']!);
+    if (isValid) {
+      await _handleSuccessUnlock(storage);
+      return true;
+    } else {
+      if (recordFailure) {
+        await _handleFailedAttempt(storage);
+      }
+      return false;
+    }
   }
 
   Future<bool> authenticateWithBiometrics() async {
-    if (state.isLockedOut || !state.hasPin) {
+    if (state.isLockedOut || !state.hasPin || state.authenticating) {
       return false;
     }
 
+    state = state.copyWith(authenticating: true);
     final localAuth = ref.read(localAuthProvider);
+    final storage = ref.read(secureStorageProvider);
+
     try {
       final authenticated = await localAuth.authenticate(
         localizedReason: 'Unlock ED Companion',
@@ -178,7 +321,32 @@ class LockController extends Notifier<AppLockState> {
       );
 
       if (authenticated) {
-        _lockoutTimer?.cancel();
+        await _handleSuccessUnlock(storage);
+        return true;
+      }
+    } catch (_) {
+      // Biometric failure falls back to keypad
+    } finally {
+      state = state.copyWith(authenticating: false);
+    }
+    return false;
+  }
+
+  Future<bool> authenticateWithPhoneLock() async {
+    if (state.authenticating) {
+      return false;
+    }
+
+    state = state.copyWith(authenticating: true);
+    final localAuth = ref.read(localAuthProvider);
+
+    try {
+      final authenticated = await localAuth.authenticate(
+        localizedReason: 'Unlock ED Companion',
+        biometricOnly: false,
+      );
+
+      if (authenticated) {
         state = state.copyWith(
           isLocked: false,
           failedAttempts: 0,
@@ -187,28 +355,72 @@ class LockController extends Notifier<AppLockState> {
         return true;
       }
     } catch (_) {
-      // Biometric failure or cancellation falls back to PIN
+      // Dismissed or failed leaves Unlock button visible
+    } finally {
+      state = state.copyWith(authenticating: false);
     }
     return false;
   }
 
   void lock() {
-    if (state.hasPin) {
+    if (state.lockMode == LockMode.appPin || state.lockMode == LockMode.phoneLock) {
       state = state.copyWith(isLocked: true);
     }
   }
 
-  void _startLockout(int seconds) {
-    _lockoutTimer?.cancel();
+  void unlock() {
     state = state.copyWith(
-      failedAttempts: 5,
-      lockoutRemainingSeconds: seconds,
+      isLocked: false,
+      failedAttempts: 0,
+      lockoutRemainingSeconds: 0,
     );
+  }
+
+
+  Future<void> _handleSuccessUnlock(FlutterSecureStorage storage) async {
+    _lockoutTimer?.cancel();
+    await _clearLockoutState(storage);
+    state = state.copyWith(
+      isLocked: false,
+      failedAttempts: 0,
+      lockoutRemainingSeconds: 0,
+    );
+  }
+
+  Future<void> _handleFailedAttempt(FlutterSecureStorage storage) async {
+    final newAttempts = state.failedAttempts + 1;
+    if (newAttempts >= 5) {
+      final lockoutUntil = DateTime.now().add(const Duration(seconds: 30));
+      await storage.write(key: keyFailedAttempts, value: '5');
+      await storage.write(key: keyLockoutUntil, value: lockoutUntil.toIso8601String());
+
+      state = state.copyWith(
+        failedAttempts: 5,
+        lockoutRemainingSeconds: 30,
+      );
+      _startCountdown(30);
+    } else {
+      await storage.write(key: keyFailedAttempts, value: '$newAttempts');
+      state = state.copyWith(failedAttempts: newAttempts);
+    }
+  }
+
+  Future<void> _clearLockoutState(FlutterSecureStorage storage) async {
+    _lockoutTimer?.cancel();
+    await storage.delete(key: keyFailedAttempts);
+    await storage.delete(key: keyLockoutUntil);
+  }
+
+  void _startCountdown(int seconds) {
+    _lockoutTimer?.cancel();
+    state = state.copyWith(lockoutRemainingSeconds: seconds);
 
     _lockoutTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       final remaining = state.lockoutRemainingSeconds - 1;
       if (remaining <= 0) {
         timer.cancel();
+        final storage = ref.read(secureStorageProvider);
+        _clearLockoutState(storage);
         state = state.copyWith(
           failedAttempts: 0,
           lockoutRemainingSeconds: 0,

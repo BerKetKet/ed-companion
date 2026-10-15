@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ed_companion/features/shell/lock/lock_controller.dart';
+import 'package:ed_companion/features/shell/lock/lock_mode.dart';
 import 'package:ed_companion/features/shell/settings_provider.dart';
 import 'package:ed_companion/main.dart';
 
@@ -12,11 +13,14 @@ class UnlockedLockController extends LockController {
   AppLockState build() {
     return const AppLockState(
       isInitialized: true,
+      lockMode: LockMode.appPin,
       hasPin: true,
       isLocked: false,
       failedAttempts: 0,
       lockoutRemainingSeconds: 0,
       biometricsSupported: false,
+      phoneLockSupported: false,
+      authenticating: false,
     );
   }
 }
