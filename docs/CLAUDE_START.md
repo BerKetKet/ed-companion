@@ -13,7 +13,8 @@ Start by reading, in this order:
 2. docs/WORKING_STYLE.md
 3. docs/ROLES_AND_WORKFLOW.md
 4. docs/DECISIONS.md
-5. the newest file in reports/ and the newest entries in docs/LOG.md
+5. docs/VISION.md (it may be added right after this commit)
+6. the newest file in reports/ and the newest entries in docs/LOG.md
 
 Fetch them from GitHub (raw.githubusercontent.com works for single files). If you cannot browse, tell me exactly which files you need and I will paste them. Never guess at code you have not seen.
 

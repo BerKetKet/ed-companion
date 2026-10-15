@@ -1,22 +1,25 @@
 # Project State
 
-Last updated: 2026-10-15 by Gemini (Brief 0002 complete)
+Last updated: 2026-10-15 by Gemini (Brief 0003 complete)
 
 ## What this is
 ED Companion: a Flutter app for emergency-department residents. They document patients quickly on their phones (typed or by voice), then paste into the hospital's existing web system, which they cannot modify and which is reachable only on the hospital wifi (10.x.x.x). Built by Bereket, a former resident, who is not a programmer. Free services only.
 
 ## Where we are
-Brief 0003 (lock types and lock fixes) is complete pending review. Users can choose App PIN, Phone screen lock, or No lock. Lockout persists across app restarts, biometrics re-lock bug is resolved, and wrong attempt limits are enforced consistently across screens.
+Briefs 0001 and 0002 approved (tags ok-0001, ok-0002). Brief 0003 (lock types and lock fixes) is done by Gemini and awaiting Claude's review.
 
 ## Next up
-1. Review 0003, then plan module B with Bereket's ideas.
+- (a) Review 0003.
+- (b) Brief 0004, navigation chrome: auto-hiding bars, bottom handle, draggable quick button, gestures with visible fallbacks, handedness setting (right by default, mirror option).
+- (c) Then ask Bereket for ideas and plan module B (patients and notes).
 
 ## Open decisions (Claude owns these)
 - Cloud backend choice for sync (leaning Firebase Firestore free tier or Supabase). Decide before module G.
 - LAN transport: depends on spike S1.
 
 ## Open items for Bereket
-- Test the hospital web system inside a phone WebView.
+- Answer two questions: is the release order in docs/VISION.md right; which R1 features should reach colleagues first?
+- Test the hospital web system inside a phone WebView (open 10.x.x.x in phone Chrome on the ED wifi, spike S2).
 - Test whether wifi client isolation blocks phone-to-phone traffic in the ED.
 - Confirm the GitHub username so Claude can fetch the repo.
 
