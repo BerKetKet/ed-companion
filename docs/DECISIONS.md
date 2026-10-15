@@ -30,3 +30,11 @@ Append only. Newest at the bottom. Format: date, decision, reason.
 - Sync evidence: LocalSend worked between Bereket's PC and phone on the hospital wifi, so device discovery and direct connections appear allowed there. Phone-to-phone on the hospital wifi is still unconfirmed. Develop and debug sync at home with two phones.
 - Hospital WebView stays a placeholder until Bereket tests the hospital system's 10.x.x.x address in phone Chrome on the ED wifi (spike S2).
 - Working agreement: ask Bereket for ideas before starting each new module.
+
+## 2026-10-15 (vision, Claude with Bereket)
+- Full feature vision and release plan recorded in docs/VISION.md (R1 pocket notebook, R2 ward sync, R3 server and chat, R4 study and learning).
+- UI: right-handed default with a mirror option; bars hide; one draggable quick button; gestures always paired with visible buttons.
+- One app with role-based screens (resident, intern, nurse, senior), not separate apps.
+- Pings, tasks, consults and chat messages are addressed synced records; each phone raises a local notification for records meant for its user.
+- The server is a headless peer running the same sync protocol (Dart) on a spare hospital PC.
+- Photos and videos are a separate sync lane, compressed on capture, thumbnails first.
