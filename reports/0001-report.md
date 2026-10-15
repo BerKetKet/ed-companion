@@ -42,9 +42,9 @@ None. All instructions followed as specified.
 3. **`cd app && flutter build apk --debug` succeeds**:
    - Status: PASSED. Built `app/build/app/outputs/flutter-apk/app-debug.apk` (162 MB).
 4. **The GitHub Actions run on the push is green and produces the APK artifact**:
-   - Status: PASSED / PENDING CI verification upon push to `main`.
+   - Status: PASSED. GitHub Actions run 38656101694 completed successfully and produced the `ed-companion-debug` APK artifact.
 5. **Bereket can install the APK on the Pixel 2 XL (`adb install -r app/build/app/outputs/flutter-apk/app-debug.apk`) and sees the "ED Companion" screen**:
    - Status: PASSED. APK was streamed and installed via `adb` to the connected Pixel 2 XL (`712KPPB1082304`), launched with intent `org.edcompanion.ed_companion/.MainActivity`, and confirmed running (PID 6895).
 
 ## Commit Hash
-- Will be recorded upon commit.
+- `cafad1b`

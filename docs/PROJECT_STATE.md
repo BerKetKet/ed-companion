@@ -1,18 +1,15 @@
 # Project State
 
-Last updated: 2026-10-15 by Claude (design phase, no code yet)
+Last updated: 2026-10-15 by Gemini (Brief 0002 complete)
 
 ## What this is
 ED Companion: a Flutter app for emergency-department residents. They document patients quickly on their phones (typed or by voice), then paste into the hospital's existing web system, which they cannot modify and which is reachable only on the hospital wifi (10.x.x.x). Built by Bereket, a former resident, who is not a programmer. Free services only.
 
 ## Where we are
-Design phase. Workflow and docs are drafted. The repository is being created. No app code yet.
+Milestone M0 is complete and brief 0002 (shell and lock) is done pending review.
 
 ## Next up
-1. Create the repo and push these docs (spell `ed-repo-init`).
-2. Brief 0001: environment setup (Flutter, Android SDK, JDK) and the empty app scaffold with CI.
-3. Spike S1: test whether phones can reach each other on the hospital wifi (decides how LAN sync works).
-4. Module A (shell and lock), then B (patients and notes).
+1. Review 0002, then module B (patients and notes) design.
 
 ## Open decisions (Claude owns these)
 - Cloud backend choice for sync (leaning Firebase Firestore free tier or Supabase). Decide before module G.
