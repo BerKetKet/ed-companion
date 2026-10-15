@@ -6,7 +6,7 @@ Last updated: 2026-10-15 by Gemini (Brief 0003 complete)
 ED Companion: a Flutter app for emergency-department residents. They document patients quickly on their phones (typed or by voice), then paste into the hospital's existing web system, which they cannot modify and which is reachable only on the hospital wifi (10.x.x.x). Built by Bereket, a former resident, who is not a programmer. Free services only.
 
 ## Where we are
-Briefs 0001 and 0002 approved (tags ok-0001, ok-0002). Brief 0003 (lock types and lock fixes) is done by Gemini and awaiting Claude's review.
+Briefs 0001 and 0002 approved (tags ok-0001, ok-0002). 0003b done, awaiting Claude review.
 
 ## Next up
 - (a) Review 0003.

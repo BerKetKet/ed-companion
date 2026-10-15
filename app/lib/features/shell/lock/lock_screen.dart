@@ -25,26 +25,36 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     });
   }
 
-  void _checkAutoPrompt() {
+  Future<void> _checkAutoPrompt() async {
     if (_promptShown) return;
     final lockState = ref.read(lockControllerProvider);
 
     if (lockState.lockMode == LockMode.phoneLock) {
-      _promptShown = true;
-      _triggerPhoneLock();
+      final supported = await ref
+          .read(lockControllerProvider.notifier)
+          .refreshDeviceSupport();
+      if (!mounted) return;
+      if (supported) {
+        _promptShown = true;
+        await _triggerPhoneLock();
+      }
     } else if (lockState.lockMode == LockMode.appPin) {
       final settings = ref.read(settingsProvider);
       if (settings.useFingerprint &&
           lockState.biometricsSupported &&
           !lockState.isLockedOut) {
         _promptShown = true;
-        _triggerBiometrics();
+        await _triggerBiometrics();
       }
     }
   }
 
   Future<void> _triggerPhoneLock() async {
-    await ref.read(lockControllerProvider.notifier).authenticateWithPhoneLock();
+    final success =
+        await ref.read(lockControllerProvider.notifier).authenticateWithPhoneLock();
+    if (!success && mounted) {
+      await ref.read(lockControllerProvider.notifier).refreshDeviceSupport();
+    }
   }
 
   Future<void> _triggerBiometrics() async {
@@ -59,7 +69,8 @@ class _LockScreenState extends ConsumerState<LockScreen> {
 
   Future<void> _onDigit(String digit) async {
     final lockState = ref.read(lockControllerProvider);
-    if (lockState.isLockedOut || _enteredPin.length >= 6) return;
+    final maxAllowed = lockState.pinLength ?? 6;
+    if (lockState.isLockedOut || _enteredPin.length >= maxAllowed) return;
 
     final nextPin = _enteredPin + digit;
     setState(() {
@@ -67,20 +78,15 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       _enteredPin = nextPin;
     });
 
-    if (nextPin.length >= 4) {
-      final isMax = nextPin.length >= 6;
+    if (lockState.pinLength != null && nextPin.length == lockState.pinLength) {
       final success = await ref
           .read(lockControllerProvider.notifier)
-          .verifyAndUnlock(nextPin, recordFailure: isMax);
-      if (success) {
-        // Handled by router redirect
-      } else {
-        if (isMax && mounted) {
-          setState(() {
-            _enteredPin = '';
-            _errorMessage = 'Incorrect PIN';
-          });
-        }
+          .verifyAndUnlock(nextPin);
+      if (!success && mounted) {
+        setState(() {
+          _enteredPin = '';
+          _errorMessage = 'Incorrect PIN';
+        });
       }
     }
   }
@@ -96,7 +102,9 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   }
 
   Future<void> _onEnter() async {
-    if (_enteredPin.length < 4) return;
+    final lockState = ref.read(lockControllerProvider);
+    if (lockState.isLockedOut || _enteredPin.isEmpty) return;
+
     final success =
         await ref.read(lockControllerProvider.notifier).verifyAndUnlock(_enteredPin);
     if (!success && mounted) {
@@ -122,6 +130,8 @@ class _LockScreenState extends ConsumerState<LockScreen> {
         settings.useFingerprint && lockState.biometricsSupported;
 
     if (lockState.lockMode == LockMode.phoneLock) {
+      final hasLock = lockState.phoneLockSupported;
+
       return Scaffold(
         body: SafeArea(
           child: Center(
@@ -131,9 +141,9 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.lock_outline,
+                    hasLock ? Icons.lock_outline : Icons.warning_amber_rounded,
                     size: 56,
-                    color: theme.colorScheme.primary,
+                    color: hasLock ? theme.colorScheme.primary : theme.colorScheme.error,
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -150,14 +160,36 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                     ),
                   ),
                   const SizedBox(height: 36),
-                  FilledButton.icon(
-                    onPressed: _triggerPhoneLock,
-                    icon: const Icon(Icons.lock_open),
-                    label: const Text('Unlock'),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(160, 48),
+                  if (hasLock)
+                    FilledButton.icon(
+                      onPressed: _triggerPhoneLock,
+                      icon: const Icon(Icons.lock_open),
+                      label: const Text('Unlock'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(160, 48),
+                      ),
+                    )
+                  else ...[
+                    Text(
+                      'This phone no longer has a screen lock. Set one in Android settings, or switch to No lock.',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 24),
+                    FilledButton(
+                      onPressed: () async {
+                        await ref
+                            .read(lockControllerProvider.notifier)
+                            .setLockMode(LockMode.none);
+                      },
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(160, 48),
+                      ),
+                      child: const Text('Switch to No lock'),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -199,7 +231,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                       const SizedBox(height: 24),
                       PinDotsIndicator(
                         pinLength: _enteredPin.length,
-                        maxDots: 6,
+                        maxDots: lockState.pinLength ?? 6,
                         hasError: displayError != null,
                       ),
                       const SizedBox(height: 16),

@@ -40,11 +40,6 @@ String? resolveLockRoute({
     return location == '/lock' ? null : '/lock';
   }
 
-  // appPin without a PIN goes to /setup-pin
-  if (mode == LockMode.appPin && !hasPin) {
-    return location == '/setup-pin' ? null : '/setup-pin';
-  }
-
   // none never goes to /lock; unlocked users on /lock or /choose-lock go to /work
   if (location == '/lock' || location == '/choose-lock') {
     return '/work';

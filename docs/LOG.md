@@ -3,6 +3,7 @@
 Newest first. One entry per approved piece of work.
 
 ## 2026-10-15
+- Brief 0003b: lock corrections (eliminated PIN guessing oracle, phone lock support check fix, setup PIN first-launch trap fix, and atomic phoneLock unlock).
 - Docs update: working style (UI principles, dual-account Claude context), decisions, next steps for 0004 and module B.
 - Brief 0003: lock types (App PIN, Phone screen lock, No lock), /choose-lock first launch, and lock fixes (lockout persistence, atomic PIN JSON storage, authenticate re-lock fix).
 - Docs update: recorded decisions, working style, roadmap spike updates, and Claude start reading list.

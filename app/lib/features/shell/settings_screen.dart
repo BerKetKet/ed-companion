@@ -259,7 +259,8 @@ class _VerifyCurrentPinSheetState extends ConsumerState<_VerifyCurrentPinSheet> 
 
   void _onDigit(String digit) {
     final lockState = ref.read(lockControllerProvider);
-    if (lockState.isLockedOut || _enteredPin.length >= 6) return;
+    final maxAllowed = lockState.pinLength ?? 6;
+    if (lockState.isLockedOut || _enteredPin.length >= maxAllowed) return;
 
     final nextPin = _enteredPin + digit;
     setState(() {
@@ -267,7 +268,7 @@ class _VerifyCurrentPinSheetState extends ConsumerState<_VerifyCurrentPinSheet> 
       _enteredPin = nextPin;
     });
 
-    if (nextPin.length >= 4) {
+    if (lockState.pinLength != null && nextPin.length == lockState.pinLength) {
       _verify(nextPin);
     }
   }
@@ -286,17 +287,16 @@ class _VerifyCurrentPinSheetState extends ConsumerState<_VerifyCurrentPinSheet> 
     final lockState = ref.read(lockControllerProvider);
     if (lockState.isLockedOut) return;
 
-    final isMax = pinToVerify.length >= 6;
     final isValid = await ref
         .read(lockControllerProvider.notifier)
-        .verifyCurrentPin(pinToVerify, recordFailure: isMax);
+        .verifyCurrentPin(pinToVerify);
 
     if (isValid) {
       if (mounted) {
         Navigator.of(context).pop(true);
       }
     } else {
-      if (isMax && mounted) {
+      if (mounted) {
         setState(() {
           _enteredPin = '';
           _errorMessage = 'Current PIN is incorrect';
@@ -306,25 +306,9 @@ class _VerifyCurrentPinSheetState extends ConsumerState<_VerifyCurrentPinSheet> 
   }
 
   Future<void> _onEnter() async {
-    if (_enteredPin.length < 4) return;
     final lockState = ref.read(lockControllerProvider);
-    if (lockState.isLockedOut) return;
-
-    final isValid =
-        await ref.read(lockControllerProvider.notifier).verifyCurrentPin(_enteredPin);
-
-    if (isValid) {
-      if (mounted) {
-        Navigator.of(context).pop(true);
-      }
-    } else {
-      if (mounted) {
-        setState(() {
-          _enteredPin = '';
-          _errorMessage = 'Current PIN is incorrect';
-        });
-      }
-    }
+    if (lockState.isLockedOut || _enteredPin.isEmpty) return;
+    await _verify(_enteredPin);
   }
 
   @override
@@ -372,7 +356,7 @@ class _VerifyCurrentPinSheetState extends ConsumerState<_VerifyCurrentPinSheet> 
             const SizedBox(height: 20),
             PinDotsIndicator(
               pinLength: _enteredPin.length,
-              maxDots: 6,
+              maxDots: lockState.pinLength ?? 6,
               hasError: displayError != null,
             ),
             const SizedBox(height: 12),

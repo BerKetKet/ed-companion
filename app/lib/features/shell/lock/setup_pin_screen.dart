@@ -157,6 +157,15 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
                         onEnterPressed: _onContinue,
                         showEnter: _currentPin.length >= 4,
                       ),
+                      if (!Navigator.canPop(context)) ...[
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: () async {
+                            await ref.read(lockControllerProvider.notifier).clearLockMode();
+                          },
+                          child: const Text('Choose a different lock type'),
+                        ),
+                      ],
                       const SizedBox(height: 24),
                     ],
                   ),

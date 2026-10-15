@@ -74,9 +74,7 @@ class ChooseLockScreen extends ConsumerWidget {
                 onTap: () async {
                   await ref
                       .read(lockControllerProvider.notifier)
-                      .setLockMode(LockMode.phoneLock);
-                  // Newly chosen on first setup: unlocked initially
-                  ref.read(lockControllerProvider.notifier).unlock();
+                      .setLockMode(LockMode.phoneLock, unlock: true);
                 },
               ),
               const SizedBox(height: 16),
