@@ -38,3 +38,11 @@ Append only. Newest at the bottom. Format: date, decision, reason.
 - Pings, tasks, consults and chat messages are addressed synced records; each phone raises a local notification for records meant for its user.
 - The server is a headless peer running the same sync protocol (Dart) on a spare hospital PC.
 - Photos and videos are a separate sync lane, compressed on capture, thumbnails first.
+
+## 2026-10-15 (vision, Claude with Bereket)
+- Full feature vision and release plan recorded in docs/VISION.md (R1 pocket notebook, R2 ward sync, R3 server and chat, R4 study and learning).
+- UI: right-handed default with a mirror option; bars hide; one draggable quick button; gestures always paired with visible buttons.
+- One app with role-based screens (resident, intern, nurse, senior), not separate apps.
+- Pings, tasks, consults and chat messages are addressed synced records; each phone raises a local notification for records meant for its user.
+- The server is a headless peer running the same sync protocol (Dart) on a spare hospital PC.
+- Photos and videos are a separate sync lane, compressed on capture, thumbnails first.
