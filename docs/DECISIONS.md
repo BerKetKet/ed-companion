@@ -22,3 +22,11 @@ Append only. Newest at the bottom. Format: date, decision, reason.
 - Sync: record-based protocol with hybrid logical clocks and per-device cursors; two transports (LAN, cloud) behind one interface. Reason: avoids conflict headaches and works the same on both transports.
 - LAN transport depends on a hospital-wifi test (spike S1) because many wifi networks block phone-to-phone traffic; fallback is Google Nearby Connections.
 - Notes are versioned, not overwritten, so no one's text is lost in a sync conflict.
+
+## 2026-10-15 (later, Claude with Bereket)
+- Lock types: user chooses App PIN, Phone screen lock, or No lock (brief 0003). The app lock is a convenience; privacy is deferred by decision.
+- Database: Drift through drift_flutter; sqlite3_flutter_libs was end-of-life and was removed. CI pins Flutter 3.47.7.
+- Study PDF reader: pdfrx (PDFium, MIT license) as the engine. Build "column mode" first (one column at a time with auto-advance, night and sepia themes); optional text-reflow mode later for digital PDFs only. Verify the library's text-extraction and search support before the module E brief. Syncfusion's viewer was rejected for licensing and weight.
+- Sync evidence: LocalSend worked between Bereket's PC and phone on the hospital wifi, so device discovery and direct connections appear allowed there. Phone-to-phone on the hospital wifi is still unconfirmed. Develop and debug sync at home with two phones.
+- Hospital WebView: stays a placeholder until Bereket tests the hospital system's 10.x.x.x address in phone Chrome on the ED wifi (spike S2).
+- Working agreement: ask Bereket for ideas before starting each new module.

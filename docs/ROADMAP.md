@@ -14,8 +14,8 @@
 Rule: M1 must be useful by itself before anything else is built on it.
 
 ## Spikes (small experiments, do early)
-- **S1** Can two phones reach each other on the ED wifi? (mDNS and direct HTTP, then Nearby Connections.) Bereket tests with a tiny test app.
-- **S2** Does the hospital web system load and stay logged in inside a WebView on the hospital wifi?
+- **S1** Largely de-risked: LocalSend worked PC to phone on hospital wifi. Still to confirm: phone to phone on hospital wifi.
+- **S2** Pending: Bereket will open the hospital system in phone Chrome on the ED wifi.
 - **S3** Does Android speech recognition handle clinical English acceptably on the target phones, offline?
 
 ## Convenience features (ordered by value for a busy ward)

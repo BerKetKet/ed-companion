@@ -10,8 +10,10 @@ The repo is public: https://github.com/BerKetKet/ed-companion
 
 Start by reading, in this order:
 1. docs/PROJECT_STATE.md
-2. docs/ROLES_AND_WORKFLOW.md
-3. the newest file in reports/ and the newest entries in docs/LOG.md
+2. docs/WORKING_STYLE.md
+3. docs/ROLES_AND_WORKFLOW.md
+4. docs/DECISIONS.md
+5. the newest file in reports/ and the newest entries in docs/LOG.md
 
 Fetch them from GitHub (raw.githubusercontent.com works for single files). If you cannot browse, tell me exactly which files you need and I will paste them. Never guess at code you have not seen.
 
