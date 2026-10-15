@@ -68,8 +68,9 @@ None. `flutter analyze` passes with zero issues. All 29 unit and widget tests pa
 8. **Wrong current PINs in Change PIN count toward the same five-attempt limit**:
    - Status: PASSED. In Settings > Change PIN, entered wrong current PIN 5 times. Lockout countdown triggered directly on the Change PIN screen with keypad disabled.
 9. **`flutter analyze` has no issues, `flutter test` passes, and the GitHub Actions run on the push is green and uploads the APK**:
-   - Status: PASSED locally (0 analyze issues, 29/29 tests pass); CI run will be verified upon push.
+   - Status: PASSED. GitHub Actions run 38665851250 completed with `success` in 5m18s and uploaded artifact `ed-companion-debug`.
 
 ## Commit Hash & CI Run
-- Commit Hash: (pending commit)
-- GitHub Actions Run: (pending push)
+- Commit Hash: `d045a77`
+- GitHub Actions Run: `38665851250` (status: `success`, duration: 5m18s)
+
