@@ -5,7 +5,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/constants.dart';
 import 'features/shell/about_screen.dart';
+import 'features/shell/chrome/gestures_help.dart';
+import 'features/shell/chrome/modal_tracker.dart';
+import 'features/shell/chrome/quick_button_widget.dart';
+import 'features/shell/drafts_placeholder_screen.dart';
 import 'features/shell/navigation_shell.dart';
+import 'features/shell/new_task_placeholder_screen.dart';
 import 'features/shell/settings_provider.dart';
 import 'features/shell/settings_screen.dart';
 import 'features/shell/study_screen.dart';
@@ -18,6 +23,9 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/work',
+    observers: [
+      ModalTrackerObserver(ref),
+    ],
     routes: [
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -58,6 +66,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/about',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const AboutScreen(),
+      ),
+      GoRoute(
+        path: '/drafts',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const DraftsPlaceholderScreen(),
+      ),
+      GoRoute(
+        path: '/new-task',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const NewTaskPlaceholderScreen(),
+      ),
+      GoRoute(
+        path: '/gestures',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const GesturesHelpScreen(),
       ),
     ],
   );
@@ -111,7 +134,12 @@ class EdCompanionApp extends ConsumerWidget {
           data: MediaQuery.of(context).copyWith(
             textScaler: TextScaler.linear(settings.textSize.scale),
           ),
-          child: child ?? const SizedBox.shrink(),
+          child: Stack(
+            children: [
+              child ?? const SizedBox.shrink(),
+              const QuickButtonOverlay(),
+            ],
+          ),
         );
       },
       routerConfig: router,
