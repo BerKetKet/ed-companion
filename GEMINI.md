@@ -9,6 +9,7 @@ You are the implementer on ED Companion, a Flutter app for emergency-department 
 4. Run `flutter analyze` and `flutter test` before finishing. Fix what you broke. Report any failures honestly; never hide or skip them.
 5. Write `reports/NNNN-report.md` as the brief requires, commit with `NNNN: short description`, push to `main`, and add one line to `docs/LOG.md`.
 6. Keep modules small and isolated under `app/lib/features/<module>/`. Shared code goes in `app/lib/core/`.
+7. As the very last step of every brief, run `tools/repo_index.sh`, commit `docs/REPO_INDEX.md` with the message `chore: refresh repo index`, push, and put the raw link the script prints at the end of your report. Claude reads the whole repo through that one link.
 
 ## Never
 - Add a package, change the stack, rename modules or change the data model unless the brief says so. If you think it is needed, say so in the report.

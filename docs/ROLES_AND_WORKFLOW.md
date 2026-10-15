@@ -27,13 +27,15 @@
 2. Claude asks at most one or two questions if needed, then produces one brief.
 3. Bereket gives the brief to Gemini. Gemini first saves it verbatim as `briefs/NNNN-slug.md`.
 4. Gemini does the work, runs the checks, commits, and writes `reports/NNNN-report.md`, including the commit hash.
-5. Bereket tells Claude "report 0003 done" and sends a fresh zip of the repo.
+5. Bereket tells Claude "report 0003 done" and gives Claude the fresh index link (Gemini refreshed it as the last step of the brief).
 6. Claude reviews the report and the commit diff, then either approves or issues a correction brief.
 7. On approval Claude updates the state docs and Gemini tags the commit `ok-NNNN`. A tag is a safe point to roll back to.
 
 ## How Claude reads the repo
 
-Claude's session usually cannot browse GitHub (automated access is blocked). Bereket sends a zip of the repo made with the command in `docs/CLAUDE_START.md`. Claude unzips it and reads every file before reviewing, then states what it could not verify (it cannot run Flutter, see git history or CI). If browsing does work, raw files at `https://raw.githubusercontent.com/BerKetKet/ed-companion/main/<path>` are a fallback, and a single commit's diff is at `https://github.com/BerKetKet/ed-companion/commit/<hash>.diff`.
+One link does it. After every piece of work Gemini runs `tools/repo_index.sh`, which writes `docs/REPO_INDEX.md` (raw GitHub links to every text file, with a cache-buster) and prints the link to give Claude. Bereket pastes that link in the first message. Claude fetches the index and then every link in it, completely, and reports how many it fetched. Claude cannot run Flutter or see git history or CI, and says so.
+
+Fallbacks, in order: a GitHub connector tool if the session has one; Bereket asks Gemini to print the index and pastes the links into his message (links in the message are always fetchable); Bereket pastes named files. Fixed index link, if the cache is not a problem: `https://raw.githubusercontent.com/BerKetKet/ed-companion/main/docs/REPO_INDEX.md`.
 
 ## Rules for briefs (Claude writing)
 

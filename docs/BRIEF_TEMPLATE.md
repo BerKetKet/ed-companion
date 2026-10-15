@@ -25,3 +25,5 @@ Write `reports/NNNN-report.md` containing:
 - Commit hash
 
 Then commit with message `NNNN: <short description>` and push. Update `docs/LOG.md` with one line.
+
+Last step, always: run `tools/repo_index.sh`, commit `docs/REPO_INDEX.md` with the message `chore: refresh repo index`, push, and put the link the script prints at the end of the report. Claude reads the repo through that link.
